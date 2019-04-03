@@ -1,0 +1,21 @@
+{
+  "name": "package/storage-oss",
+  "description": "aliyun oss filesystem driver on lumen",
+  "type": "library",
+  "require": {
+    "jacobcyl/ali-oss-storage": "dev-master"
+  },
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "keezhao",
+      "email": "keezhao@xmisp.com"
+    }
+  ],
+  "autoload": {
+    "psr-4" : {
+      "Package\\StorageOSS\\" : "src/"
+    }
+  },
+  "minimum-stability": "dev"
+}
