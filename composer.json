@@ -3,7 +3,7 @@
   "description": "aliyun oss filesystem driver on lumen",
   "type": "library",
   "require": {
-    "jacobcyl/ali-oss-storage": "dev-master"
+    "jacobcyl/ali-oss-storage": "^2.1"
   },
   "license": "MIT",
   "authors": [
