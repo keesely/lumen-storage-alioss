@@ -22,7 +22,6 @@ use Package\StorageOSS\OssAdapter;
 class OssServiceProvider extends ServiceProvider {
 
   public function boot () {
-    /**
     $this->app->singleton(
       \Illuminate\Contracts\Filesystem\Factory::class,
       function ($app) {
@@ -38,7 +37,8 @@ class OssServiceProvider extends ServiceProvider {
         });
         return $fs;
       });
-    * */
+    /**
+     * */
 
     $this->app->singleton('filesystem', function ($app) {
       // 添加扩展支持
