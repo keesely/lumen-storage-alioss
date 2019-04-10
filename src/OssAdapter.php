@@ -20,6 +20,7 @@ use League\Flysystem\Config;
 use League\Flysystem\Adapter\AbstractAdapter;
 use League\Flysystem\Adapter\Polyfill\NotSupportingVisibilityTrait;
 use League\Flysystem\AdapterInterface;
+use League\Flysystem\FileNotFoundException;
 
 class OssAdapter extends AbstractAdapter {
 
@@ -365,6 +366,9 @@ class OssAdapter extends AbstractAdapter {
     try {
       return $this->client->doesObjectExist($object);
     } catch (\Exception $e) {
+      if ($this->client->debug) {
+        Log::error($e);
+      }
       return false;
     }
   }
@@ -496,10 +500,11 @@ class OssAdapter extends AbstractAdapter {
    *
    * @return string
    */
-  public function getUrl( $path )
-  {
-    if (!$this->has($path)) throw new FileNotFoundException($filePath.' not found');
-    return ( $this->ssl ? 'https://' : 'http://' ) . ( $this->isCname ? ( $this->cdnDomain == '' ? $this->endPoint : $this->cdnDomain ) : $this->bucket . '.' . $this->endPoint ) . '/' . ltrim($path, '/');
+  public function getUrl( $path, array $options = NULL) {
+    $object = $this->applyPathPrefix($path);
+    if (!$this->has($path)) throw new FileNotFoundException($path.' not found');
+    $url = $this->client->getResourceURL($object);
+    return (string) $url;
   }
 
   /**

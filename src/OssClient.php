@@ -41,8 +41,9 @@ class OssClient {
     $config['connect_timeout'] = self::array_get($config, 'connect_timeout', 30);
 
     // 内网地址
-    $config['endpoint_internal'] = $config['is_cname'] && $config['cdn_domain'] 
-      ? $config['cdn_domain'] 
+    //$config['endpoint_internal'] = self::array_get($config, 'endpoint_internal', self::array_get($config, 'endpoint'));
+    $config['endpoint_internal'] = $config['is_cname'] && $config['bucket_domain'] 
+      ? $config['bucket_domain'] 
       : (self::array_get($config, 'endpoint_internal', $config['endpoint']));
 
     foreach ($this->allowConf as $key) {
@@ -216,50 +217,9 @@ class OssClient {
     return $this->ossClient->putObjectAcl($this->getBucket(), $object, $acl);
   }
 
-  /**
-   * 获取私有文件访问连接
-   * */
-  public function getSignURL ($object, $timeout = 3600) {
-    $url = $this->ossClient->signUrl($this->getBucket(), $object, $timeout);
-    //$url = rawurldecode($url);
-    $url = urldecode($url);
-    //$url = str_replace('http=>//', '', $url);
-    return parse_url($url);
-  }
-
-  public function getResourceUrl ($resource_url, $object_case, $object_name, $acl, $timeout = 3600) {
-    if ('private' != $acl) {
-      return ['resource_url' => $this->setResourceUrl($resource_url)];
-    }
-    $purl = $this->getSignURL("{$object_case}/{$object_name}", $timeout);
-    // 解码
-    parse_str($purl['query'], $query_array);
-    $query_array['Signature'] = urlencode($query_array['Signature']);
-    // 处理%2B
-    $query_array['Signature'] = str_replace('+', "%2B", $query_array['Signature']);
-
-    $query_tmp = [];
-    foreach ($query_array as $k => $v) $query_tmp[] = "{$k}={$v}";
-    $OSSsignURL = implode("&", $query_tmp);
-    //$OSSsignURL = http_build_query($query_array);
-    $resource_url = $this->setResourceUrl($resource_url . '?'. $OSSsignURL);
-
-    return [
-      'resource_url' => $resource_url,
-      'resource_query_str' => $purl['query'],
-      'expire_at' => time() + $timeout,
-    ];
-  }
-
-  protected function setResourceUrl ($resource_url) {
-    if (strpos($resource_url, 'http://') === 0) {
-      $resource_url = substr($resource_url, strlen('https://')-1);
-    }
-    elseif (strpos($resource_url, 'https://') === 0) {
-      $resource_url = substr($resource_url, strlen('https://')-1);
-    }
-    $scheme = $this->ossClient->isUseSSL() ? 'https://' : 'http://';
-    return $scheme.$resource_url;
+  public function getResourceUrl ($path, $timeout = 3600) {
+    $url = new ResourceURL($this, $path, $timeout);
+    return $url;
   }
 
   static public function fileInfo ($file) {

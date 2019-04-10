@@ -10,6 +10,8 @@
  * */
 namespace Package\StorageOSS;
 
+use Package\StorageOSS\Plugins\PutFile;
+use Package\StorageOSS\Plugins\PutRemoteFile;
 use Illuminate\Support\Facades\Storage;
 use League\Flysystem\Filesystem;
 use Illuminate\Support\ServiceProvider;
@@ -18,8 +20,9 @@ use Package\StorageOSS\OssClient;
 use Package\StorageOSS\OssAdapter;
 
 class OssServiceProvider extends ServiceProvider {
-  
+
   public function boot () {
+    /**
     $this->app->singleton(
       \Illuminate\Contracts\Filesystem\Factory::class,
       function ($app) {
@@ -28,10 +31,14 @@ class OssServiceProvider extends ServiceProvider {
         $fs->extend('oss', function ($app, $config) {
           $client = new OssClient($config);
           $adapter = new OssAdapter($client, $config['object_case'] ?: '');
-          return new Filesystem($adapter);
+          $filesystem = new Filesystem($adapter);
+          $filesystem->addPlugin(new PutFile());
+          $filesystem->addPlugin(new PutRemoteFile());
+          return $filesystem;
         });
         return $fs;
       });
+    * */
 
     $this->app->singleton('filesystem', function ($app) {
       // 添加扩展支持
@@ -40,7 +47,10 @@ class OssServiceProvider extends ServiceProvider {
       $fs->extend('oss', function ($app, $config) {
         $client = new OssClient($config);
         $adapter = new OssAdapter($client, $config['object_case'] ?: '');
-        return new Filesystem($adapter);
+        $filesystem = new Filesystem($adapter);
+        $filesystem->addPlugin(new PutFile());
+        $filesystem->addPlugin(new PutRemoteFile());
+        return $filesystem;
       });
       return $fs;
     });

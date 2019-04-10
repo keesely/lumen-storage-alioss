@@ -15,14 +15,4 @@ use Illuminate\Http\File;
 
 class FileSystemAdapter  extends FA {
 
-  public function putRemoteFile ($path, $remote_url, array $options = NULL) {
-  
-  } 
-
-  public function PutFile ($path, $filePath, $options = array()) {
-    if (is_string($filePath) && is_file($filePath)) {
-      return (bool)$this->driver->writeFile($path, $filePath, $options);
-    }
-    return parent::PutFile($path, $filePath, $options);
-  }
 }
