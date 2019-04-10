@@ -24,7 +24,7 @@ class OssServiceProvider extends ServiceProvider {
       \Illuminate\Contracts\Filesystem\Factory::class,
       function ($app) {
         // 添加扩展支持
-        $fs = new \Illuminate\Filesystem\FilesystemManager($app);
+        $fs = new FilesystemManager($app);
         $fs->extend('oss', function ($app, $config) {
           $client = new OssClient($config);
           $adapter = new OssAdapter($client, $config['object_case'] ?: '');
@@ -34,14 +34,15 @@ class OssServiceProvider extends ServiceProvider {
       });
 
     $this->app->singleton('filesystem', function ($app) {
-        // 添加扩展支持
-        $fs = new \Illuminate\Filesystem\FilesystemManager($app);
-        $fs->extend('oss', function ($app, $config) {
-          $client = new OssClient($config);
-          $adapter = new OssAdapter($client, $config['object_case'] ?: '');
-          return new Filesystem($adapter);
-        });
-        return $fs;
+      // 添加扩展支持
+      //$fs = new \Illuminate\Filesystem\FilesystemManager($app);
+      $fs = new FilesystemManager($app);
+      $fs->extend('oss', function ($app, $config) {
+        $client = new OssClient($config);
+        $adapter = new OssAdapter($client, $config['object_case'] ?: '');
+        return new Filesystem($adapter);
+      });
+      return $fs;
     });
   }
 }
