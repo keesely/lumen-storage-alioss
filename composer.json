@@ -3,7 +3,10 @@
   "description": "aliyun oss filesystem driver on lumen",
   "type": "library",
   "require": {
-    "jacobcyl/ali-oss-storage": "^2.1"
+    "jacobcyl/ali-oss-storage": "^2.1",
+    "aliyuncs/oss-sdk-php": "~2.0",
+    "league/flysystem": "^1.0"
+
   },
   "license": "MIT",
   "authors": [
