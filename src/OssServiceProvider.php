@@ -54,5 +54,15 @@ class OssServiceProvider extends ServiceProvider {
       });
       return $fs;
     });
+
+     Storage::extend('oss', function($app, $config) {
+        // 添加扩展支持
+       $client = new OssClient($config);
+       $adapter = new OssAdapter($client, $config['object_case'] ?: '');
+       $filesystem = new Filesystem($adapter);
+       $filesystem->addPlugin(new PutFile());
+       $filesystem->addPlugin(new PutRemoteFile());
+       return $filesystem;
+     });
   }
 }
