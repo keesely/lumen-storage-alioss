@@ -97,12 +97,12 @@ class OssClient {
         $cname
       );
 
-      if ($debug) Log::debug('OSS Client: ', [
+      if ($debug) /*Log::debug('OSS Client: ', [
         'accessKeyId'     => $accessKeyId, 
         'accessKeySecret' => $accessKeySecret, 
         'endpoint'        => $endpoint, 
         'cname'           => $cname
-      ]);
+      ]);*/
 
       if ($timeout = $this->getConf('timeout')) $this->ossClient->setTimeout($timeout);
 

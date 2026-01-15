@@ -532,9 +532,10 @@ class OssAdapter extends AbstractAdapter {
   protected function normalizeResponse(array $object, $path = null) {
     $result = [
       'path' => $path ?: 
-        $this->removePathPrefix(isset($object['Key']) ? 
-          $object['Key'] : 
-          $object['Prefix'])
+      $object['Key']
+        //$this->removePathPrefix(isset($object['Key']) ? 
+          //$object['Key'] : 
+          //$object['Prefix'])
     ];
     $result['dirname'] = Util::dirname($result['path']);
 
