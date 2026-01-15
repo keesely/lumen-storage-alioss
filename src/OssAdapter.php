@@ -8,23 +8,28 @@
  * @since 08/04/2019
  * @version OssAdapter.php 2019.04.08
  * */
-namespace Package\StorageOSS;
+namespace Lx\StorageOSS;
 
-use Package\StorageOSS\OssClient as Client;
+use Lx\StorageOSS\OssClient as Client;
 use OSS\Core\OssException;
 use OSS\OssClient;
 use Log;
 
 use League\Flysystem\Util;
 use League\Flysystem\Config;
-use League\Flysystem\Adapter\AbstractAdapter;
+//use League\Flysystem\Adapter\AbstractAdapter;
+use League\Flysystem\FilesystemAdapter;
 use League\Flysystem\Adapter\Polyfill\NotSupportingVisibilityTrait;
 use League\Flysystem\AdapterInterface;
 use League\Flysystem\FileNotFoundException;
+use League\Flysystem\FileAttributes;
 
-class OssAdapter extends AbstractAdapter {
+//class OssAdapter extends AbstractAdapter {
+class OssAdapter implements FilesystemAdapter {
 
-  use NotSupportingVisibilityTrait;
+  //use NotSupportingVisibilityTrait;
+
+  use BackwardCompatibilitySupport;
 
   protected static $resultMap = [
     'Body'           => 'raw_contents',
@@ -63,6 +68,8 @@ class OssAdapter extends AbstractAdapter {
     'Multipart'   => 128
   ];
 
+  protected $metadataCaches = [];
+
   public function __construct(Client $client, string $prefix = '', array $options = []) {
     $this->setPathPrefix($prefix);
     $this->client = $client;
@@ -92,7 +99,7 @@ class OssAdapter extends AbstractAdapter {
    *
    * @return array|false false on failure file meta data on success
    */
-  public function write($path, $contents, Config $config) {
+  public function write(string $path, string $contents, Config $config): void {
     $object = $this->applyPathPrefix($path);
     $options = $this->getOptions($this->options, $config);
 
@@ -106,9 +113,12 @@ class OssAdapter extends AbstractAdapter {
       $this->client->putObject($object, $contents, $options);
     } catch (OssException $e) {
       $this->logErr(__FUNCTION__, $e);
-      return false;
+      return;
+      //return fals
     }
-    return $this->normalizeResponse($options, $path);
+    //return 
+    $this->normalizeResponse($options, $path);
+    return;
   }
 
   /**
@@ -120,10 +130,11 @@ class OssAdapter extends AbstractAdapter {
    *
    * @return array|false false on failure file meta data on success
    */
-  public function writeStream($path, $resource, Config $config) {
+  public function writeStream($path, $resource, Config $config): void {
     $options = $this->getOptions($this->options, $config);
     $contents = stream_get_contents($resource);
-    return $this->write($path, $contents, $config);
+    $this->write($path, $contents, $config);
+    return;
   }
 
   public function writeFile($path, $filePath, Config $config) {
@@ -188,32 +199,34 @@ class OssAdapter extends AbstractAdapter {
   /**
    * {@inheritdoc}
    */
-  public function copy($path, $newpath) {
+  public function copy($path, $newpath, Config $config): void {
     $object = $this->applyPathPrefix($path);
     $newObject = $this->applyPathPrefix($newpath);
     try{
       $this->getClient()->copyObject($this->bucket, $object, $this->bucket, $newObject);
     } catch (OssException $e) {
       $this->logErr(__FUNCTION__, $e);
-      return false;
+      return;
     }
 
-    return true;
+    return; // true;
   }
 
   /**
    * {@inheritdoc}
    */
-  public function delete($path) {
+  public function delete($path): void {
     $object = $this->applyPathPrefix($path);
     try{
       $this->client->deleteObject($object);
     }catch (OssException $e) {
       $this->logErr(__FUNCTION__, $e);
-      return false;
+      return;
     }
 
-    return ! $this->has($path);
+    //return 
+    ! $this->has($path);
+    return;
   }
 
   /**
@@ -348,14 +361,15 @@ class OssAdapter extends AbstractAdapter {
   /**
    * {@inheritdoc}
    */
-  public function setVisibility($path, $visibility)
+  public function setVisibility($path, $visibility): void
   {
     $object = $this->applyPathPrefix($path);
     $acl = ( $visibility === AdapterInterface::VISIBILITY_PUBLIC ) ? OssClient::OSS_ACL_TYPE_PUBLIC_READ : OssClient::OSS_ACL_TYPE_PRIVATE;
 
     $this->getClient()->putObjectAcl($this->bucket, $object, $acl);
 
-    return compact('visibility');
+    return;
+    //return compact('visibility');
   }
 
   /**
@@ -376,7 +390,7 @@ class OssAdapter extends AbstractAdapter {
   /**
    * {@inheritdoc}
    */
-  public function read($path) {
+  public function read($path): string {
     $result = $this->readObject($path);
     $result['contents'] = (string) $result['raw_contents'];
     unset($result['raw_contents']);
@@ -415,7 +429,7 @@ class OssAdapter extends AbstractAdapter {
   /**
    * {@inheritdoc}
    */
-  public function listContents($directory = '', $recursive = false)
+  public function listContents($directory = '', $recursive = false): iterable
   {
     $dirObjects = $this->listDirObjects($directory, true);
     $contents = $dirObjects["objects"];
@@ -431,16 +445,24 @@ class OssAdapter extends AbstractAdapter {
   /**
    * {@inheritdoc}
    */
-  public function getMetadata($path) {
+  public function getMetadata($path): FileAttributes {
     $object = $this->applyPathPrefix($path);
     try {
-      $objectMeta = $this->client->getObjectMeta($object);
+      $meta = $this->client->getObjectMeta($object);
     } catch (OssException $e) {
       $this->logErr(__FUNCTION__, $e);
-      return false;
+      return new FileAttributes;
     }
+    return $attr = new FileAttributes(
+      path: $path,
+      fileSize: $meta['content-length'] ?? 0,
+      visibility: $meta['x-oss-object-type'] ?? '',
+      lastModified: strtotime($meta['last-modified'] ?? null),
+      mimeType: $meta['mimeType'] ?? 'none',
+      extraMetadata: $meta,
+    );
 
-    return $objectMeta;
+    //return $meta;
   }
 
   /**
@@ -500,7 +522,7 @@ class OssAdapter extends AbstractAdapter {
    *
    * @return string
    */
-  public function getUrl( $path, array $options = NULL) {
+  public function getUrl( $path, array|null $options = NULL) {
     $object = $this->applyPathPrefix($path);
     if (!$this->has($path)) throw new FileNotFoundException($path.' not found');
     $url = $this->client->getResourceURL($object);
@@ -560,7 +582,7 @@ class OssAdapter extends AbstractAdapter {
    *
    * @return array OSS options
    */
-  protected function getOptions(array $options = [], Config $config = null) {
+  protected function getOptions(array $options = [], Config|null $config = null) {
     $options = array_merge($this->options, $options);
 
     if ($config) {
@@ -615,4 +637,40 @@ class OssAdapter extends AbstractAdapter {
       Log::error($e->getMessage());
     }
   }
+
+  public function move(string $source, string $destination, Config $config): void {
+  }
+
+  public function fileExists(string $path): bool {
+    return false;
+  }
+
+  public function directoryExists(string $path): bool {
+    return false;
+  }
+
+  public function deleteDirectory(string $path): void {
+    return;
+  }
+
+  public function createDirectory(string $path, Config $config): void {
+  }
+
+  public function visibility(string $path): FileAttributes {
+    return $this->getMetadata($path);
+  }
+
+  public function mimeType(string $path): FileAttributes {
+    return $this->getMetadata($path);
+  }
+
+  public function fileSize(string $path): FileAttributes {
+    return $this->getMetadata($path);
+  }
+
+  public function lastModified(string $path): FileAttributes {
+    return $this->getMetadata($path);
+  }
+
+
 }

@@ -8,7 +8,7 @@
  * @since 13/06/2017
  * @version Oss.php 2017.06.13
  * */
-namespace Package\StorageOSS;
+namespace Lx\StorageOSS;
 
 use OSS\OssClient as Client;
 use OSS\Core\OssException;
@@ -142,7 +142,7 @@ class OssClient {
   /**
    * 列出OSS文件列表
    * */
-  public function listObjects ($delimter = '/', $prefix = NULL, array $options = array()) {
+  public function listObjects ($delimter = '/', $prefix = NULL, array $options = []) {
     if ($delimter) $options['delimter'] = $delimter;
     if ($prefix)   $options['prefix']   = $prefix;
     if (!self::array_get($options, 'max-keys')) $options['max-keys'] = 1000;
@@ -154,35 +154,35 @@ class OssClient {
   /**
    * 检测Object是否存在
    * */
-  public function doesObjectExist ($object, array $options = NULL) {
+  public function doesObjectExist ($object, array|null $options = NULL) {
     return $this->ossClient->doesObjectExist($this->getBucket(), $object, $options);
   }
 
   /**
    * 获取文件内容
    * */
-  public function getObject ($object, array $options = NULL) {
+  public function getObject ($object, array | null $options = NULL) {
     return $this->ossClient->getObject($this->getBucket(), $object, $options);
   }
 
   /**
    * 获取文件头信息
    * */
-  public function getObjectMeta ($object, array $options = NULL) {
+  public function getObjectMeta ($object, array|null $options = NULL) {
     return $this->ossClient->getObjectMeta($this->getBucket(), $object, $options);
   }
 
   /**
    * 上传文件
    * */
-  public function putObject ($object, $content, array $options = NULL) {
+  public function putObject ($object, $content, array|null $options = NULL) {
     return $this->ossClient->putObject($this->getBucket(), $object, $content, $options);
   }
 
   /**
    * 追加内容
    * */
-  public function appendObject ($object, $content, $position, array $options = NULL) {
+  public function appendObject ($object, $content, $position, array|null $options = NULL) {
     return $this->ossClient->appendObject($this->getBucket(), $object, $content, $position, $options);
   }
 
@@ -196,7 +196,7 @@ class OssClient {
   /**
    * copy 文件
    * */
-  public function copyObject ($obejct, $toBucket, $toObject, array $options = NULL) {
+  public function copyObject ($obejct, $toBucket, $toObject, array|null $options = NULL) {
     $fromBucket = $this->getBucket();
     return $this->ossClient->copyObject($fromBucket, $object, $toBucket, $toObject, $options);
   }

@@ -8,16 +8,16 @@
  * @since 08/04/2019
  * @version OssServiceProvider.php 2019.04.08
  * */
-namespace Package\StorageOSS;
+namespace Lx\StorageOSS;
 
-use Package\StorageOSS\Plugins\PutFile;
-use Package\StorageOSS\Plugins\PutRemoteFile;
+use Lx\StorageOSS\Plugins\PutFile;
+use Lx\StorageOSS\Plugins\PutRemoteFile;
 use Illuminate\Support\Facades\Storage;
 use League\Flysystem\Filesystem;
 use Illuminate\Support\ServiceProvider;
 
-use Package\StorageOSS\OssClient;
-use Package\StorageOSS\OssAdapter;
+use Lx\StorageOSS\OssClient;
+use Lx\StorageOSS\OssAdapter;
 
 class OssServiceProvider extends ServiceProvider {
 
@@ -60,8 +60,8 @@ class OssServiceProvider extends ServiceProvider {
        $client = new OssClient($config);
        $adapter = new OssAdapter($client, $config['object_case'] ?: '');
        $filesystem = new Filesystem($adapter);
-       $filesystem->addPlugin(new PutFile());
-       $filesystem->addPlugin(new PutRemoteFile());
+       //$filesystem->addPlugin(new PutFile());
+       //$filesystem->addPlugin(new PutRemoteFile());
        return $filesystem;
      });
   }

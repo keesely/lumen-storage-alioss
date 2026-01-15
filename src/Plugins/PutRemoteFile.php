@@ -1,5 +1,5 @@
 <?php
-namespace Package\StorageOSS\Plugins;
+namespace Lx\StorageOSS\Plugins;
 use League\Flysystem\Config;
 use League\Flysystem\Plugin\AbstractPlugin;
 class PutRemoteFile extends AbstractPlugin

@@ -8,8 +8,8 @@
  * @since 10/04/2019
  * @version ResourceURL.php 2019.04.10
  * */
-namespace Package\StorageOSS;
-use Package\StorageOSS\OssClient as Client;
+namespace Lx\StorageOSS;
+use Lx\StorageOSS\OssClient as Client;
 
 class ResourceURL {
 

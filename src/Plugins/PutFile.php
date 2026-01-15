@@ -1,5 +1,5 @@
 <?php
-namespace Package\StorageOSS\Plugins;
+namespace Lx\StorageOSS\Plugins;
 
 use Illuminate\Support\Facades\Log;
 use League\Flysystem\Config;
