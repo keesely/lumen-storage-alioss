@@ -1,24 +1,26 @@
 {
-  "name": "package/storage-oss",
+  "name": "keesely/lumen-storage-alioss",
   "description": "aliyun oss filesystem driver on lumen",
   "type": "library",
   "require": {
+    "php": "^8.0",
     "jacobcyl/ali-oss-storage": "^2.1",
     "aliyuncs/oss-sdk-php": "~2.0",
-    "league/flysystem": "^1.0"
+    "league/flysystem": "^3.25.1"
 
   },
   "license": "MIT",
   "authors": [
     {
-      "name": "keezhao",
-      "email": "keezhao@xmisp.com"
+      "name": "Kee",
+      "email": "chinboy2012@gmail.com"
     }
   ],
   "autoload": {
     "psr-4" : {
-      "Package\\StorageOSS\\" : "src/"
+      "Lx\\StorageOSS\\" : "src/"
     }
   },
-  "minimum-stability": "dev"
+  "minimum-stability": "dev",
+  "prefer-stable": true
 }

@@ -1,6 +1,6 @@
 # storage-oss
 
-直连阿里云OSS驱动 - base in lumen 5.6
+直连阿里云OSS驱动 By Lumen
 
 ## Inspired By
 - [thephpleague/flysystem-aws-s3-v2](https://github.com/thephpleague/flysystem-aws-s3-v2)
@@ -8,7 +8,7 @@
 - [jacobcyl/Aliyun-oss-storage](https://github.com/jacobcyl/Aliyun-oss-storage)
 
 ## Require
-- Laravel/Lumen 5+
+- Laravel/Lumen 
 - cURL extension
 - iconv
 
@@ -17,16 +17,16 @@
 在composer.json 添加资源库:
 
 ```json
-"djpackagist": {                                                           
-  "type": "composer",                                                    
-    "url": "https://packagist.xmisp.com"                                   
+"storage-oss": {                                                           
+  "type": "vcs",
+    "url": "https://github.com/keesely/lumen-storage-alioss"
 }
 ```
 
 添加扩展包:
 
 ```
-"package/storage-oss": "dev-master"
+"keesely/lumen-storage-alioss": "main-dev"
 ```
 
 执行: `composer install` OR `composer update`
@@ -34,7 +34,7 @@
 或者直接简单执行:
 
 ```
-composer require package/storage-oss
+composer require keesely/lumen-storage-alioss
 ```
     
 在 config/app.php 中添加：
@@ -49,7 +49,7 @@ composer require package/storage-oss
 'providers' => [
   ....
 
-  Package\StorageOSS\OssServiceProvider::class,
+  Lx\StorageOSS\OssServiceProvider::class,
     ....
 ]
 ```
