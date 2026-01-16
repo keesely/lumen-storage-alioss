@@ -75,4 +75,5 @@ trait BackwardCompatibilitySupport {
   {
     return substr($path, strlen((string) $this->getPathPrefix()));
   } 
+
 }

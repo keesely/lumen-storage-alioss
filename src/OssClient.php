@@ -217,11 +217,32 @@ class OssClient {
     return $this->ossClient->putObjectAcl($this->getBucket(), $object, $acl);
   }
 
+  public function getAcl($object, $options = null) {
+    return $this->ossClient->getObjectAcl($this->getBucket(), $object, $options);
+  }
+
+  /**
+   * 上传文件流
+   * */
+  public function putStream($object, $handle, array|null $options = NULL) {
+    return $this->ossClient->uploadStream($this->getBucket(), $object, $handle, $options);
+  }
+
+  /**
+   * 下载文件流
+   * */
+  public function getStream($object, array|null $options = NULL) {
+    $stream = tmpfile();
+    $options[Client::OSS_FILE_DOWNLOAD] = $stream;
+    $this->ossClient->getObject($this->getBucket(), $object, $options);
+    rewind($stream);
+    return $stream;
+  }
+
   public function getResourceUrl ($path, $timeout = 3600) {
     $url = new ResourceURL($this, $path, $timeout);
     return $url;
   }
-
   static public function fileInfo ($file) {
     if (!function_exists('finfo_open')) {
       return [];

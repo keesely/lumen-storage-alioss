@@ -11,18 +11,21 @@
 namespace Lx\StorageOSS;
 
 use Lx\StorageOSS\OssClient as Client;
+use Lx\StorageOSS\UrlGenerators\PublicUrlGenerator;
+use Lx\StorageOSS\UrlGenerators\TemporaryUrlGenerator;
 use OSS\Core\OssException;
 use OSS\OssClient;
 use Log;
 
-use League\Flysystem\Util;
 use League\Flysystem\Config;
+//use League\Flysystem\Util;
 //use League\Flysystem\Adapter\AbstractAdapter;
 use League\Flysystem\FilesystemAdapter;
 use League\Flysystem\Adapter\Polyfill\NotSupportingVisibilityTrait;
 use League\Flysystem\AdapterInterface;
 use League\Flysystem\FileNotFoundException;
 use League\Flysystem\FileAttributes;
+//use Symfony\Component\Mime\MimeTypes;
 
 //class OssAdapter extends AbstractAdapter {
 class OssAdapter implements FilesystemAdapter {
@@ -69,11 +72,16 @@ class OssAdapter implements FilesystemAdapter {
   ];
 
   protected $metadataCaches = [];
+  protected $publicUrlGenerator;
+  protected $temporaryUrlGenerator;
 
   public function __construct(Client $client, string $prefix = '', array $options = []) {
     $this->setPathPrefix($prefix);
     $this->client = $client;
     $this->options = array_merge($this->options, $options);
+    
+    $this->publicUrlGenerator = new PublicUrlGenerator($client);
+    $this->temporaryUrlGenerator = new TemporaryUrlGenerator($client);
   }
 
   public function __get ($key) {
@@ -104,7 +112,10 @@ class OssAdapter implements FilesystemAdapter {
     $options = $this->getOptions($this->options, $config);
 
     if (! isset($options[OssClient::OSS_LENGTH])) {
-      $options[OssClient::OSS_LENGTH] = Util::contentSize($contents);
+      //$options[OssClient::OSS_LENGTH] = Util::contentSize($contents);
+      //$options[OssClient::OSS_LENGTH] = mb_strlen($contents);
+      $size = defined('MB_OVERLOAD_STRING') ? mb_strlen($contents, '8bit') : strlen($contents);
+      $options[OssClient::OSS_LENGTH] = $size;
     }
     if (! isset($options[OssClient::OSS_CONTENT_TYPE])) {
       $options[OssClient::OSS_CONTENT_TYPE] = Util::guessMimeType($path, $contents);
@@ -125,15 +136,23 @@ class OssAdapter implements FilesystemAdapter {
    * Write a new file using a stream.
    *
    * @param string $path
-   * @param resource $resource
+   * @param resource $contents
    * @param Config $config Config object
    *
-   * @return array|false false on failure file meta data on success
+   * @throws UnableToWriteFile
+   * @throws FilesystemException
    */
-  public function writeStream($path, $resource, Config $config): void {
+  public function writeStream(string $path, $contents, Config $config): void {
+    $object = $this->applyPathPrefix($path);
     $options = $this->getOptions($this->options, $config);
-    $contents = stream_get_contents($resource);
-    $this->write($path, $contents, $config);
+    
+    try {
+      $this->client->putStream($object, $contents, $options);
+    } catch (OssException $e) {
+      $this->logErr(__FUNCTION__, $e);
+      throw new \League\Flysystem\UnableToWriteFile($path, $e);
+    }
+    
     return;
   }
 
@@ -164,7 +183,7 @@ class OssAdapter implements FilesystemAdapter {
    * @return array|false false on failure file meta data on success
    */
   public function update($path, $contents, Config $config) {
-    if (! $config->has('visibility') && ! $config->has('ACL')) {
+    if (! ($vs = $config->has('visibility')) && ! ($acl = $config->has('ACL'))) {
       $config->set(static::$metaMap['ACL'], $this->getObjectACL($path));
     }
     // $this->delete($path);
@@ -188,8 +207,8 @@ class OssAdapter implements FilesystemAdapter {
   /**
    * {@inheritdoc}
    */
-  public function rename($path, $newpath) {
-    if (! $this->copy($path, $newpath)){
+  public function rename($path, $newpath, Config $config) {
+    if (! $this->copy($path, $newpath, $config)){
       return false;
     }
 
@@ -364,9 +383,15 @@ class OssAdapter implements FilesystemAdapter {
   public function setVisibility($path, $visibility): void
   {
     $object = $this->applyPathPrefix($path);
-    $acl = ( $visibility === AdapterInterface::VISIBILITY_PUBLIC ) ? OssClient::OSS_ACL_TYPE_PUBLIC_READ : OssClient::OSS_ACL_TYPE_PRIVATE;
+    if (!in_array($visibility, ['default', 'public', 'protected', 'private', 'public-read', 'public-read-write'])) {
+        $visibility = 'default';
+    }
+    if ('public' == $visibility) $visibility = 'public-read-write';
+    if ('protected' == $visibility) $visibility = 'public-read';
+    //$acl = ( $visibility === 'public' ) ? OssClient::OSS_ACL_TYPE_PUBLIC_READ : OssClient::OSS_ACL_TYPE_PRIVATE;
 
-    $this->getClient()->putObjectAcl($this->bucket, $object, $acl);
+    $this->client->setAcl($object, $visibility);
+    //$this->getClient()->putObjectAcl($this->bucket, $object, $acl);
 
     return;
     //return compact('visibility');
@@ -394,22 +419,28 @@ class OssAdapter implements FilesystemAdapter {
     $result = $this->readObject($path);
     $result['contents'] = (string) $result['raw_contents'];
     unset($result['raw_contents']);
-    return $result;
+    return $result['contents'];
   }
 
   /**
    * {@inheritdoc}
    */
-  public function readStream($path) {
+  public function readStream(string $path) {
     $object = $this->applyPathPrefix($path);
-    $result = $this->readObject($object);
-    $result['stream'] = $result['raw_contents'];
-    rewind($result['stream']);
-    // Ensure the EntityBody object destruction doesn't close the stream
-    $result['raw_contents']->detachStream();
-    unset($result['raw_contents']);
-
-    return $result;
+    
+    try {
+      $stream = $this->client->getStream($object);
+      
+      if (!is_resource($stream)) {
+        throw new \League\Flysystem\UnableToReadFile($path);
+      }
+      
+      rewind($stream);
+      return $stream;
+    } catch (OssException $e) {
+      $this->logErr(__FUNCTION__, $e);
+      throw new \League\Flysystem\UnableToReadFile($path, $e);
+    }
   }
 
   /**
@@ -431,6 +462,7 @@ class OssAdapter implements FilesystemAdapter {
    */
   public function listContents($directory = '', $recursive = false): iterable
   {
+    $directory = $this->applyPathPrefix($directory);
     $dirObjects = $this->listDirObjects($directory, true);
     $contents = $dirObjects["objects"];
 
@@ -449,18 +481,26 @@ class OssAdapter implements FilesystemAdapter {
     $object = $this->applyPathPrefix($path);
     try {
       $meta = $this->client->getObjectMeta($object);
+      $acl = $this->client->getAcl($object);
+
+      return $attr = new FileAttributes(
+        path: $path,
+        fileSize: $meta['content-length'] ?? 0,
+        visibility: $acl, //$meta['x-oss-object-type'] ?? '',
+        lastModified: strtotime($meta['last-modified'] ?? null),
+        mimeType: $meta['content-type'] ?? 'none',
+        extraMetadata: $meta,
+      );
     } catch (OssException $e) {
       $this->logErr(__FUNCTION__, $e);
-      return new FileAttributes;
+      return new FileAttributes(
+        path: $path,
+        fileSize: 0,
+        visibility: 'none',
+        lastModified: 0,
+        mimeType: 'none',
+      );
     }
-    return $attr = new FileAttributes(
-      path: $path,
-      fileSize: $meta['content-length'] ?? 0,
-      visibility: $meta['x-oss-object-type'] ?? '',
-      lastModified: strtotime($meta['last-modified'] ?? null),
-      mimeType: $meta['mimeType'] ?? 'none',
-      extraMetadata: $meta,
-    );
 
     //return $meta;
   }
@@ -525,8 +565,22 @@ class OssAdapter implements FilesystemAdapter {
   public function getUrl( $path, array|null $options = NULL) {
     $object = $this->applyPathPrefix($path);
     if (!$this->has($path)) throw new FileNotFoundException($path.' not found');
-    $url = $this->client->getResourceURL($object);
-    return (string) $url;
+    return $this->publicUrlGenerator->generate($object);
+  }
+  
+  /**
+   * Get a temporary URL for a file.
+   *
+   * @param string $path
+   * @param int $expiration
+   * @param array|null $options
+   * @return string
+   */
+  public function getTemporaryUrl(string $path, int $expiration, array|null $options = NULL): string {
+    $object = $this->applyPathPrefix($path);
+    if (!$this->has($path)) throw new FileNotFoundException($path.' not found');
+    $method = $options['method'] ?? 'GET';
+    return $this->temporaryUrlGenerator->generate($object, $expiration, $method);
   }
 
   /**
@@ -604,10 +658,10 @@ class OssAdapter implements FilesystemAdapter {
     $options = [];
 
     foreach (static::$metaOptions as $option) {
-      if (! $config->has($option)) {
+      if (!$val = $config->get($option)) {
         continue;
       }
-      $options[static::$metaMap[$option]] = $config->get($option);
+      $options[static::$metaMap[$option]] = $val; //$config->get($option);
     }
 
     if ($visibility = $config->get('visibility')) {
@@ -639,21 +693,27 @@ class OssAdapter implements FilesystemAdapter {
   }
 
   public function move(string $source, string $destination, Config $config): void {
+    $this->copy($source, $destination, $config) & $this->delete($source);
+    //$this->rename($source, $destination, $config);
   }
 
   public function fileExists(string $path): bool {
-    return false;
+    return $this->has($path);
   }
 
   public function directoryExists(string $path): bool {
-    return false;
+    $path = rtrim($this->applyPathPrefix($path), '/') .'/';
+    $dirObjects = $this->listDirObjects($path, false);
+    return count($dirObjects['objects']) > 0;
   }
 
   public function deleteDirectory(string $path): void {
+    $this->deleteDir($path);
     return;
   }
 
   public function createDirectory(string $path, Config $config): void {
+    $this->createDir($path, $config);
   }
 
   public function visibility(string $path): FileAttributes {
@@ -671,6 +731,5 @@ class OssAdapter implements FilesystemAdapter {
   public function lastModified(string $path): FileAttributes {
     return $this->getMetadata($path);
   }
-
 
 }

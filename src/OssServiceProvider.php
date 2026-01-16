@@ -18,51 +18,33 @@ use Illuminate\Support\ServiceProvider;
 
 use Lx\StorageOSS\OssClient;
 use Lx\StorageOSS\OssAdapter;
+use Lx\StorageOSS\UrlGenerators\PublicUrlGenerator;
+use Lx\StorageOSS\UrlGenerators\TemporaryUrlGenerator;
+use League\Flysystem\PathNormalizer;
 
 class OssServiceProvider extends ServiceProvider {
 
   public function boot () {
-    $this->app->singleton(
-      \Illuminate\Contracts\Filesystem\Factory::class,
-      function ($app) {
-        // 添加扩展支持
-        $fs = new FilesystemManager($app);
-        $fs->extend('oss', function ($app, $config) {
-          $client = new OssClient($config);
-          $adapter = new OssAdapter($client, $config['object_case'] ?: '');
-          $filesystem = new Filesystem($adapter);
-          $filesystem->addPlugin(new PutFile());
-          $filesystem->addPlugin(new PutRemoteFile());
-          return $filesystem;
-        });
-        return $fs;
-      });
-    /**
-     * */
+    // Register the 'oss' driver using Laravel's Storage facade
+    Storage::extend('oss', function($app, $config) {
+      // Create OSS client
+      $client = new OssClient($config);
+      
+      // Create adapter with path prefix
+      $adapter = new OssAdapter($client, $config['object_case'] ?? '');
 
-    $this->app->singleton('filesystem', function ($app) {
-      // 添加扩展支持
-      //$fs = new \Illuminate\Filesystem\FilesystemManager($app);
-      $fs = new FilesystemManager($app);
-      $fs->extend('oss', function ($app, $config) {
-        $client = new OssClient($config);
-        $adapter = new OssAdapter($client, $config['object_case'] ?: '');
-        $filesystem = new Filesystem($adapter);
-        $filesystem->addPlugin(new PutFile());
-        $filesystem->addPlugin(new PutRemoteFile());
-        return $filesystem;
-      });
-      return $fs;
+      // Create filesystem instance
+      $filesystem = new Filesystem(
+        $adapter, [], null,
+        new PublicUrlGenerator($client),
+        new TemporaryUrlGenerator($client),
+      );
+      
+      // Add plugins
+      // $filesystem->addPlugin(new PutFile());
+      // $filesystem->addPlugin(new PutRemoteFile());
+      
+      return $filesystem;
     });
-
-     Storage::extend('oss', function($app, $config) {
-        // 添加扩展支持
-       $client = new OssClient($config);
-       $adapter = new OssAdapter($client, $config['object_case'] ?: '');
-       $filesystem = new Filesystem($adapter);
-       //$filesystem->addPlugin(new PutFile());
-       //$filesystem->addPlugin(new PutRemoteFile());
-       return $filesystem;
-     });
   }
 }
