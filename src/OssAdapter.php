@@ -71,9 +71,10 @@ class OssAdapter implements FilesystemAdapter {
     'Multipart'   => 128
   ];
 
-  protected $metadataCaches = [];
   protected $publicUrlGenerator;
   protected $temporaryUrlGenerator;
+
+  static $metadata = [];
 
   public function __construct(Client $client, string $prefix = '', array $options = []) {
     $this->setPathPrefix($prefix);
@@ -479,11 +480,13 @@ class OssAdapter implements FilesystemAdapter {
    */
   public function getMetadata($path): FileAttributes {
     $object = $this->applyPathPrefix($path);
+    if ($meta = static::$metadata[$object] ?? null) return $meta;
+
     try {
       $meta = $this->client->getObjectMeta($object);
       $acl = $this->client->getAcl($object);
 
-      return $attr = new FileAttributes(
+      return static::$metadata[$object] = new FileAttributes(
         path: $path,
         fileSize: $meta['content-length'] ?? 0,
         visibility: $acl, //$meta['x-oss-object-type'] ?? '',
